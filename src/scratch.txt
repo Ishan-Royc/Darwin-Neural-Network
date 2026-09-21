@@ -1,0 +1,5 @@
+Parameters:
+- ln 123: Number of Layers (num_layers): The total number of layers in the neural network, including input and output layers.
+- ln 131: Number of Nodes (num_nodes): The number of nodes in each layer. For the input and output layers, this is equal to the length of the input data. For hidden layers, it is randomly determined.
+- ln 276: Batch Size: The number of Neural Networks generated in each generation.
+- ln 276: Reps: The total number of generations of Neural Networks to be trained.

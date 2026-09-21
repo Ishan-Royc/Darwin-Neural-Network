@@ -1,0 +1,19 @@
+{
+  "name": "neuronal_darwin",
+  "version": "1.0.0",
+  "description": "The shittiest neural network generator/trainer in existence. The idea is that you feed it data where an output array is the result of some mathematical transformation to the input array, and the program tries to derive a neural network which can match this transformation, given the input data.",
+  "license": "MIT",
+  "author": "Ishan Roychowdhury",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "run": "node dist/index.js",
+    "build": "tsc"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.2",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2"
+  }
+}
