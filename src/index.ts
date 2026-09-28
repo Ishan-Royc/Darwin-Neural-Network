@@ -14,6 +14,27 @@ const functions = {
     logarithmic: (x: number, a: number, b: number): number => {
         return a * Math.sign(x) * Math.log1p(Math.abs(b * x));
     },
+    sin: (x: number, a: number, b: number): number => {
+        return a * Math.sin(b * x);
+    },
+    cos: (x: number, a: number, b: number): number => {
+        return a * Math.cos(b * x);
+    },
+    tan: (x: number, a: number, b: number): number => {
+        return a * Math.tan(b * x);
+    },
+    sinh: (x: number, a: number, b: number): number => {
+        return a * Math.sinh(b * x);
+    },
+    cosh: (x: number, a: number, b: number): number => {
+        return a * Math.cosh(b * x);
+    },
+    pow: (x: number, a: number, b: number): number => {
+        return a * (x ** b);
+    },
+    exp: (x: number, a: number, b: number): number => {
+        return a * (b ** x);
+    }
 };
 
 type OperatingFunction = (x: number, a: number, b: number) => number;
@@ -271,14 +292,15 @@ function mutateNetwork(network: NeuralNetwork, mutationRate = 0.1): void {
 }
 
 function main():void{
-    let inputData:number[] = [1, 2, 3];
-    let testArray:number[] = [2, 4, 6];
-    let neuralNetworks:NeuralNetwork[] = trainNeuralNetwork(inputData, testArray, 100, 400);
+    let inputData:number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+    let testArray:number[] = [2, 4, 6, 8, 10, 12, 14, 16, 18];
+    let neuralNetworks:NeuralNetwork[] = trainNeuralNetwork(inputData, testArray, 350, 500);
     console.log("Input Data: ", inputData);
     for(let neuralNetwork of neuralNetworks){
         let output:number[] = neuralNetwork.neuralize();
         console.log("Output Data: ", output);
         console.log("Error: ", neuralNetwork.error);
+        console.log("Average Error: ", neuralNetwork.error/inputData.length)
     }
     console.log("Output Reference: ", testArray);
 }
