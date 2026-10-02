@@ -301,7 +301,7 @@ function mutateNetwork(network: NeuralNetwork, mutationRate = 0.3): void {
 function main():void{
     let inputData:number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
     let testArray:number[] = [2, 4, 6, 8, 10, 12, 14, 16, 18];
-    let neuralNetworks:NeuralNetwork[] = trainNeuralNetwork(inputData, testArray, 350, 700);
+    let neuralNetworks:NeuralNetwork[] = trainNeuralNetwork(inputData, testArray, 400, 750);
     console.log("Input Data: ", inputData);
     for(let neuralNetwork of neuralNetworks){
         let output:number[] = neuralNetwork.neuralize();
