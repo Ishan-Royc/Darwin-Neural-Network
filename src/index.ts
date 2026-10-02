@@ -1,3 +1,5 @@
+import fs = require("fs");
+
 const functions = {
     sigmoid: (x: number, a: number, b: number): number => {
         return a / (1 + Math.pow(b, -x));
@@ -267,24 +269,29 @@ function randomGaussian(): number {
     return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
 }
 
-function mutateNetwork(network: NeuralNetwork, mutationRate = 0.1): void {
+function mutateNetwork(network: NeuralNetwork, mutationRate = 0.3): void {
     for (const layer of network.Layers) {
         for (const node of layer) {
             if (node instanceof InputNode) {
                 continue;
             }
+            let sign: boolean = Math.random() < 0.5;
+
             if (Math.random() < mutationRate) {
-                node.bias += randomGaussian() * 0.1;
+                node.bias += (sign ? 1 : -1) * randomGaussian() * 0.1;
             }
             if (Math.random() < mutationRate) {
-                node.a += randomGaussian() * 0.1;
+                node.a += (sign ? 1 : -1) * randomGaussian() * 0.1;
             }
             if (Math.random() < mutationRate) {
-                node.b += randomGaussian() * 0.1;
+                node.b += (sign ? 1 : -1) * randomGaussian() * 0.1;
             }
+            /*if (Math.random() < mutationRate/100) {
+                node.operatingFunction = randomCompositeFunction();
+            }*/
             for (const connection of node.outputConnections) {
                 if (Math.random() < mutationRate) {
-                    connection.weight += randomGaussian() * 0.1;
+                    connection.weight += (sign ? 1 : -1) * randomGaussian() * 0.1;
                 }
             }
         }
@@ -294,13 +301,21 @@ function mutateNetwork(network: NeuralNetwork, mutationRate = 0.1): void {
 function main():void{
     let inputData:number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
     let testArray:number[] = [2, 4, 6, 8, 10, 12, 14, 16, 18];
-    let neuralNetworks:NeuralNetwork[] = trainNeuralNetwork(inputData, testArray, 350, 500);
+    let neuralNetworks:NeuralNetwork[] = trainNeuralNetwork(inputData, testArray, 350, 700);
     console.log("Input Data: ", inputData);
     for(let neuralNetwork of neuralNetworks){
         let output:number[] = neuralNetwork.neuralize();
         console.log("Output Data: ", output);
         console.log("Error: ", neuralNetwork.error);
         console.log("Average Error: ", neuralNetwork.error/inputData.length)
+        console.log("Average Percent Error: ", (neuralNetwork.error/inputData.length)*100, "%");
+        const jsonString = JSON.stringify(
+            neuralNetwork,
+            (key, value) =>
+                key === "inputNode" || key === "outputNode" ? undefined : value,
+            2
+        );
+        fs.writeFileSync("neural_network.json", jsonString);
     }
     console.log("Output Reference: ", testArray);
 }
