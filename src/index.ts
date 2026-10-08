@@ -1,6 +1,11 @@
-import fs = require("fs");
+console.time("Execution Time");
+const fs = require("fs");
+//const {GPU} = require('gpu.js');
+//const gpu = new GPU();
+//console.log("GPU.js is running on: ", gpu.mode);
 
-const functions = {
+
+const functions = { // Define a set of mathematical functions that get composited to create each node's activation function
     sigmoid: (x: number, a: number, b: number): number => {
         return a / (1 + Math.pow(b, -x));
     },
@@ -36,6 +41,21 @@ const functions = {
     },
     exp: (x: number, a: number, b: number): number => {
         return a * (b ** x);
+    },
+    quadratic: (x: number, a: number, b: number): number => {
+        return a * (x ** 2) + b * x;
+    },
+    cubic: (x: number, a: number, b: number): number => {
+        return a * (x ** 3) + b * (x ** 2) + x + (a*b)+a-b;
+    },
+    reciprocal: (x: number, a: number, b: number): number => {
+        return a / (b + x);
+    },
+    absolute: (x: number, a: number, b: number): number => {
+        return a * Math.abs(b * x);
+    },
+    step: (x: number, a: number, b: number): number => {
+        return x < 0 ? a : b;
     }
 };
 
@@ -139,40 +159,42 @@ class NeuralNetwork{
     Layers:Node[][];
     inputData: number[];
     error: number;
-    constructor(inputData: number[]){
+    constructor(inputData: number[], randomize: boolean = true){
         this.Layers = [];
         this.inputData = inputData;
         this.error = 0;
-        const num_layers:number = Math.floor(Math.random()*10) + 2;
-        for(let i = 0; i < num_layers; i++){
-                this.Layers.push([]);
-        }
-        for (let i = 0; i < num_layers; i++) {
-            const num_nodes =
-                i === 0 || i === num_layers - 1
-                    ? this.inputData.length
-                    : Math.floor(Math.random()*10) + 1;
+        if(randomize){
+            const num_layers:number = Math.floor(Math.random()*10) + 2;
+            for(let i = 0; i < num_layers; i++){
+                    this.Layers.push([]);
+            }
+            for (let i = 0; i < num_layers; i++) {
+                const num_nodes =
+                    i === 0 || i === num_layers - 1
+                        ? this.inputData.length
+                        : Math.floor(Math.random()*10) + 1;
 
-            for (let j = 0; j < num_nodes; j++) {
-                if (i === 0) {
-                    this.Layers[i].push(new InputNode());
-                } else if (i === num_layers - 1) {
-                    this.Layers[i].push(
-                        new OutputNode(Math.random(), randomCompositeFunction())
-                    );
-                } else {
-                    this.Layers[i].push(
-                        new Node(0, 0, Math.random(), randomCompositeFunction())
-                    );
+                for (let j = 0; j < num_nodes; j++) {
+                    if (i === 0) {
+                        this.Layers[i].push(new InputNode());
+                    } else if (i === num_layers - 1) {
+                        this.Layers[i].push(
+                            new OutputNode(Math.random(), randomCompositeFunction())
+                        );
+                    } else {
+                        this.Layers[i].push(
+                            new Node(0, 0, Math.random(), randomCompositeFunction())
+                        );
+                    }
                 }
             }
-        }
-        for(let i = 0; i < num_layers - 1; i++){
-            for(let j = 0; j < this.Layers[i].length; j++){
-                for(let k = 0; k < this.Layers[i+1].length; k++){
-                    const weight:number = Math.random();
-                    const connection:Connection = new Connection(this.Layers[i][j], this.Layers[i+1][k], weight);
-                    this.Layers[i][j].addConnection(connection);
+            for(let i = 0; i < num_layers - 1; i++){
+                for(let j = 0; j < this.Layers[i].length; j++){
+                    for(let k = 0; k < this.Layers[i+1].length; k++){
+                        const weight:number = Math.random();
+                        const connection:Connection = new Connection(this.Layers[i][j], this.Layers[i+1][k], weight);
+                        this.Layers[i][j].addConnection(connection);
+                    }
                 }
             }
         }
@@ -195,13 +217,22 @@ class NeuralNetwork{
                 this.Layers[i][j].passForward();
             }
         }
+        /*for(let i = 1; i < this.Layers.length; i++){
+            const kernel = gpu.createKernel(function(layer: Node[]){
+                const node = layer[this.thread.x];
+                node.activate();
+                node.passForward();
+            }).setOutput([this.Layers[i].length]);
+
+            kernel(this.Layers[i]);
+        }*/
         for(let i = 0; i < this.Layers[this.Layers.length - 1].length; i++){
             outputArray.push(this.Layers[this.Layers.length - 1][i].output);
         }
         return outputArray;
     }
     clone():NeuralNetwork{
-        const clonedNetwork:NeuralNetwork = new NeuralNetwork(this.inputData);
+        const clonedNetwork:NeuralNetwork = new NeuralNetwork(this.inputData, false);
         clonedNetwork.Layers = this.Layers.map(layer => layer.map(node => {
             const clonedNode:Node = new Node(node.input, node.output, node.bias, node.operatingFunction);
             clonedNode.a = node.a;
@@ -228,7 +259,7 @@ function trainNeuralNetwork(inputData: number[], outputData: number[], batchSize
     let population = Array.from({ length: batchSize }, () => new NeuralNetwork(inputData));
 
     let bestNetwork: NeuralNetwork | null = null;
-    let bestError = Infinity;
+    let bestError: number = Infinity;
 
     for (let generation = 0; generation < reps; generation++) {
         for (const network of population) {
@@ -247,13 +278,15 @@ function trainNeuralNetwork(inputData: number[], outputData: number[], batchSize
 
         population.sort((first, second) => first.error - second.error);
 
-        const nextPopulation: NeuralNetwork[] = [
-            population[0].clone()
-        ];
+        const eliteCount = Math.min(3, batchSize, population.length);
+        const nextPopulation = population
+            .slice(0, eliteCount)
+            .map(network => network.clone());
 
         while (nextPopulation.length < batchSize) {
-            const child = population[0].clone();
-            mutateNetwork(child);
+            const parentIndex = Math.floor(Math.random() * eliteCount);
+            const child = population[parentIndex].clone();
+            mutateNetwork(child, generation, bestError);
             nextPopulation.push(child);
         }
 
@@ -269,46 +302,51 @@ function randomGaussian(): number {
     return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * v);
 }
 
-function mutateNetwork(network: NeuralNetwork, mutationRate = 0.3): void {
+function mutateNetwork(network: NeuralNetwork, generation: number, error: number): void {
+    let mutationRate: number = (0.5)/(Math.log(generation + 10));
     for (const layer of network.Layers) {
         for (const node of layer) {
             if (node instanceof InputNode) {
                 continue;
             }
-            let sign: boolean = Math.random() < 0.5;
 
             if (Math.random() < mutationRate) {
-                node.bias += (sign ? 1 : -1) * randomGaussian() * 0.1;
+                node.bias += (Math.random() < 0.5 ? 1 : -1) * randomGaussian() * 0.1;
             }
             if (Math.random() < mutationRate) {
-                node.a += (sign ? 1 : -1) * randomGaussian() * 0.1;
+                node.a += (Math.random() < 0.5 ? 1 : -1) * randomGaussian() * 0.1;
             }
             if (Math.random() < mutationRate) {
-                node.b += (sign ? 1 : -1) * randomGaussian() * 0.1;
+                node.b += (Math.random() < 0.5 ? 1 : -1) * randomGaussian() * 0.1;
             }
-            /*if (Math.random() < mutationRate/100) {
+            if (Math.random() < mutationRate/500) {
                 node.operatingFunction = randomCompositeFunction();
-            }*/
+            }
             for (const connection of node.outputConnections) {
                 if (Math.random() < mutationRate) {
-                    connection.weight += (sign ? 1 : -1) * randomGaussian() * 0.1;
+                    connection.weight += (Math.random() < 0.5 ? 1 : -1) * randomGaussian() * 0.1;
                 }
             }
         }
     }
 }
 
-function main():void{
+function main(): void {
     let inputData:number[] = [1, 2, 3, 4, 5, 6, 7, 8, 9];
     let testArray:number[] = [2, 4, 6, 8, 10, 12, 14, 16, 18];
-    let neuralNetworks:NeuralNetwork[] = trainNeuralNetwork(inputData, testArray, 400, 750);
+    let neuralNetworks:NeuralNetwork[] = trainNeuralNetwork(inputData, testArray, 850, 1500);
     console.log("Input Data: ", inputData);
     for(let neuralNetwork of neuralNetworks){
         let output:number[] = neuralNetwork.neuralize();
         console.log("Output Data: ", output);
         console.log("Error: ", neuralNetwork.error);
-        console.log("Average Error: ", neuralNetwork.error/inputData.length)
-        console.log("Average Percent Error: ", (neuralNetwork.error/inputData.length)*100, "%");
+        console.log("Average Error: ", neuralNetwork.error/inputData.length);
+        let totalPercentError = 0;
+        for(let i = 0; i < output.length; i++){
+            totalPercentError += Math.abs((output[i] - testArray[i]) / testArray[i]);
+        }
+        const averagePercentError = (totalPercentError / output.length) * 100;
+        console.log("Average Percent Error: ", averagePercentError, "%");
         const jsonString = JSON.stringify(
             neuralNetwork,
             (key, value) =>
@@ -321,3 +359,4 @@ function main():void{
 }
 
 main();
+console.timeEnd("Execution Time");
